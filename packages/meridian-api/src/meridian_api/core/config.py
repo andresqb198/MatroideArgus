@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     auth0_algorithms: list[str] = ["RS256"]
 
     # Security
-    secret_key: str = "change-me-in-production"
+    secret_key: str = "change-me-in-production"  # noqa: S105
 
     model_config = {"env_prefix": "MERIDIAN_", "env_file": ".env"}
 

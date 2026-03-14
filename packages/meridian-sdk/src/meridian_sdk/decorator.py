@@ -3,14 +3,16 @@
 from __future__ import annotations
 
 import functools
+import logging
 import time
 import uuid
-from typing import Any, Callable, TypeVar
+from collections.abc import Callable
+from typing import Any
 
-F = TypeVar("F", bound=Callable[..., Any])
+logger = logging.getLogger(__name__)
 
 
-def observe(func: F | None = None, *, model_name: str | None = None) -> Any:
+def observe[F: Callable[..., Any]](func: F | None = None, *, model_name: str | None = None) -> Any:
     """Decorator that captures predictions from any ML model's predict method.
 
     Usage:
@@ -51,7 +53,7 @@ def observe(func: F | None = None, *, model_name: str | None = None) -> Any:
                 )
             except Exception:
                 # NFR-006: SDK must never affect inference
-                pass
+                logger.debug("Failed to log prediction", exc_info=True)
 
             return result
 
@@ -65,9 +67,9 @@ def observe(func: F | None = None, *, model_name: str | None = None) -> Any:
 def _safe_serialize(args: tuple[Any, ...], kwargs: dict[str, Any]) -> dict[str, Any]:
     """Best-effort serialization of prediction inputs."""
     try:
-        import numpy as np
+        import numpy as np  # type: ignore[import-not-found]
 
-        serialized_args = []
+        serialized_args: list[Any] = []
         for arg in args:
             if isinstance(arg, np.ndarray):
                 serialized_args.append({"shape": list(arg.shape), "dtype": str(arg.dtype)})
@@ -81,7 +83,7 @@ def _safe_serialize(args: tuple[Any, ...], kwargs: dict[str, Any]) -> dict[str, 
 def _safe_serialize_output(result: Any) -> Any:
     """Best-effort serialization of prediction output."""
     try:
-        import numpy as np
+        import numpy as np  # type: ignore[import-not-found]
 
         if isinstance(result, np.ndarray):
             return {"shape": list(result.shape), "dtype": str(result.dtype), "values": result.tolist()[:100]}

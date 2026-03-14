@@ -24,3 +24,10 @@ dev = [
     "mypy>=1.13",
     "pre-commit>=4.0",
 ]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+addopts = "--import-mode=importlib"
+markers = [
+    "integration: requires running infrastructure (ClickHouse, etc.)",
+]

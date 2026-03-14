@@ -43,12 +43,8 @@ async def test_ingest_predictions_success():
     mock_client = MagicMock()
     app.state.ch_client = mock_client
 
-    with patch(
-        "meridian_api.api.v1.predictions.insert_predictions", return_value=2
-    ) as mock_insert:
-        async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test"
-        ) as client:
+    with patch("meridian_api.api.v1.predictions.insert_predictions", return_value=2) as mock_insert:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.post(_BATCH_URL, json=_SAMPLE_BATCH)
 
     assert response.status_code == 202
@@ -73,9 +69,7 @@ async def test_ingest_predictions_clickhouse_error():
         "meridian_api.api.v1.predictions.insert_predictions",
         side_effect=RuntimeError("connection lost"),
     ):
-        async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.post(_BATCH_URL, json=_SAMPLE_BATCH)
 
     assert response.status_code == 202
@@ -90,12 +84,8 @@ async def test_ingest_predictions_empty_batch():
     mock_client = MagicMock()
     app.state.ch_client = mock_client
 
-    with patch(
-        "meridian_api.api.v1.predictions.insert_predictions", return_value=0
-    ):
-        async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test"
-        ) as client:
+    with patch("meridian_api.api.v1.predictions.insert_predictions", return_value=0):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.post(_BATCH_URL, json={"predictions": []})
 
     assert response.status_code == 202
@@ -130,9 +120,7 @@ async def test_ingest_predictions_integration():
     app.state.ch_client = ch_client
 
     try:
-        async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.post(_BATCH_URL, json=batch)
 
         assert response.status_code == 202
@@ -142,7 +130,8 @@ async def test_ingest_predictions_integration():
         result = ch_client.query(
             "SELECT prediction_id, model_name, latency_ms "
             "FROM meridian.predictions "
-            f"WHERE prediction_id IN ('{run_id_1}', '{run_id_2}')"
+            "WHERE prediction_id IN ({run_id_1:String}, {run_id_2:String})",
+            parameters={"run_id_1": run_id_1, "run_id_2": run_id_2},
         )
         rows = result.result_rows
         assert len(rows) == 2
@@ -151,7 +140,6 @@ async def test_ingest_predictions_integration():
     finally:
         # Clean up test data.
         ch_client.command(
-            "ALTER TABLE meridian.predictions DELETE "
-            f"WHERE prediction_id IN ('{run_id_1}', '{run_id_2}')"
+            f"ALTER TABLE meridian.predictions DELETE WHERE prediction_id IN ('{run_id_1}', '{run_id_2}')"
         )
         ch_client.close()

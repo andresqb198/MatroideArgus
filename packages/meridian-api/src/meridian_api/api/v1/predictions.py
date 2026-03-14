@@ -46,7 +46,7 @@ def get_ch_client(request: Request):
 )
 async def ingest_predictions(
     batch: PredictionBatchRequest,
-    ch_client=Depends(get_ch_client),
+    ch_client=Depends(get_ch_client),  # noqa: B008
 ) -> PredictionBatchResponse:
     """Ingest a batch of predictions from the SDK."""
     try:
