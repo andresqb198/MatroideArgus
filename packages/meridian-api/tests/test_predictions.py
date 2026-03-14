@@ -140,6 +140,7 @@ async def test_ingest_predictions_integration():
     finally:
         # Clean up test data.
         ch_client.command(
-            f"ALTER TABLE meridian.predictions DELETE WHERE prediction_id IN ('{run_id_1}', '{run_id_2}')"
+            "ALTER TABLE meridian.predictions DELETE WHERE prediction_id IN ({run_id_1:String}, {run_id_2:String})",
+            parameters={"run_id_1": run_id_1, "run_id_2": run_id_2},
         )
         ch_client.close()
