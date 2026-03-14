@@ -40,6 +40,6 @@ jobs:
         run: uv run pytest --cov --cov-report=xml
         env:
           MERIDIAN_DATABASE_URL: postgresql+asyncpg://meridian:meridian@localhost:5432/meridian
-      - uses: codecov/codecov-action@v4
+      - uses: codecov/codecov-action@v5
         with:
           files: coverage.xml
