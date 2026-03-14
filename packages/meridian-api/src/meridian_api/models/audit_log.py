@@ -3,8 +3,8 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, String, Text, func
-from sqlalchemy.dialects.postgresql import JSONB, UUID, INET
+from sqlalchemy import DateTime, String, func
+from sqlalchemy.dialects.postgresql import INET, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from meridian_api.models.base import Base

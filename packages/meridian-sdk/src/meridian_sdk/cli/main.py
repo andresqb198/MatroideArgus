@@ -36,7 +36,7 @@ def _cmd_status() -> None:
     from meridian_sdk.config import MeridianConfig
 
     config = MeridianConfig.from_env()
-    print(f"Meridian SDK v0.1.0")
+    print("Meridian SDK v0.1.0")
     print(f"  API URL:  {config.api_url}")
     print(f"  Project:  {config.project or '(not set)'}")
     print(f"  Env:      {config.env}")
