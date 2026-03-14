@@ -1,0 +1,9 @@
+target-version = "py312"
+line-length = 120
+
+[lint]
+select = ["E", "F", "W", "I", "UP", "S", "B", "A", "C4", "RUF"]
+ignore = ["S101"]  # Allow assert in tests
+
+[lint.isort]
+known-first-party = ["meridian_sdk", "meridian_api"]

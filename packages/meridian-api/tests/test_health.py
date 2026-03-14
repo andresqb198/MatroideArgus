@@ -3,7 +3,7 @@
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from app.main import app
+from meridian_api.main import app
 
 
 @pytest.mark.asyncio

@@ -2,8 +2,8 @@
 
 from fastapi import FastAPI
 
-from app.api.v1 import router as api_v1_router
-from app.core.config import settings
+from meridian_api.api.v1 import router as api_v1_router
+from meridian_api.core.config import settings
 
 app = FastAPI(
     title="Meridian API",

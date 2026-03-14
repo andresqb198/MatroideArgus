@@ -18,16 +18,31 @@ services:
   clickhouse:
     image: clickhouse/clickhouse-server:24.1
     ports:
-      - "8123:8123"  # HTTP
-      - "9000:9000"  # Native
+      - "8123:8123"
+      - "9000:9000"
     volumes:
       - chdata:/var/lib/clickhouse
-      - ./infrastructure/docker/clickhouse-init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ../infra/db/clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql
     healthcheck:
       test: ["CMD", "clickhouse-client", "--query", "SELECT 1"]
       interval: 5s
       timeout: 5s
       retries: 5
+
+  api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.api
+    ports:
+      - "8000:8000"
+    environment:
+      MERIDIAN_DATABASE_URL: postgresql+asyncpg://meridian:meridian@postgres:5432/meridian
+      MERIDIAN_CLICKHOUSE_HOST: clickhouse
+    depends_on:
+      postgres:
+        condition: service_healthy
+      clickhouse:
+        condition: service_healthy
 
 volumes:
   pgdata:

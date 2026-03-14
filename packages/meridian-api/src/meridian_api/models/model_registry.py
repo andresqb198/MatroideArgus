@@ -7,7 +7,7 @@ from sqlalchemy import DateTime, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
-from app.models.base import Base, TimestampMixin
+from meridian_api.models.base import Base, TimestampMixin
 
 
 class ModelVersion(Base, TimestampMixin):

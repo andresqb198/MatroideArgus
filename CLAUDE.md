@@ -1,40 +1,42 @@
 # Meridian — AI Ops & Governance Platform
 
-## Project Structure (Monorepo)
-- `sdk/` — Python SDK (`meridian-sdk` on PyPI)
-- `backend/` — FastAPI backend API
-- `dashboard/` — Web dashboard (TBD: Next.js or similar)
-- `infrastructure/` — Docker, K8s manifests, IaC
-- `docs/` — Documentation
+## Monorepo Layout (uv workspace)
+- `packages/meridian-sdk/` — Python SDK (`pip install meridian-sdk`). The `@observe` decorator instruments ML model predict() calls with < 2ms p99 overhead.
+- `packages/meridian-api/` — FastAPI backend. Ingests predictions, serves dashboards, handles auth (Auth0 SSO + RBAC), multi-tenant via PostgreSQL schema-per-tenant.
+- `infra/db/migrations/` — Alembic migrations for PostgreSQL.
+- `infra/db/clickhouse/` — ClickHouse DDL for prediction storage (50B rows, 2-year retention).
+- `docker/` — Docker Compose for local dev (PostgreSQL 16 + ClickHouse 24 + API).
+- `docs/` — Documentation.
 
 ## Tech Stack
-- **SDK**: Python 3.10+, minimal dependencies
-- **Backend**: FastAPI, SQLAlchemy, Alembic, PostgreSQL, ClickHouse
-- **Auth**: Auth0 (SAML 2.0, OIDC), RBAC with 4 roles (Admin, ML Engineer, Compliance Officer, Viewer)
-- **Infra**: Docker Compose (local), Kubernetes (prod)
+- **Language**: Python 3.12+
+- **Package manager**: uv (workspace monorepo)
+- **API framework**: FastAPI + Uvicorn
+- **ORM**: SQLAlchemy 2.0 (async) + Pydantic
+- **Databases**: PostgreSQL 16 (OLTP, multi-tenant), ClickHouse 24 (predictions OLAP)
+- **Auth**: Auth0 (SAML 2.0 / OIDC), RBAC with 4 roles
+- **Linter/Formatter**: ruff
+- **Type checker**: mypy
+- **Tests**: pytest + pytest-asyncio + httpx
 
 ## Key Commands
 ```bash
-# Local development
-docker compose up -d                    # Start PostgreSQL + ClickHouse
-cd sdk && pip install -e ".[dev]"       # Install SDK in dev mode
-cd backend && pip install -e ".[dev]"   # Install backend in dev mode
-cd backend && uvicorn app.main:app --reload  # Run API server
-
-# Testing
-cd sdk && pytest                        # SDK tests
-cd backend && pytest                    # Backend tests
-
-# Database migrations
-cd backend && alembic upgrade head      # Run migrations
-cd backend && alembic revision --autogenerate -m "description"  # New migration
+uv sync                              # Install all deps
+uv run pytest                        # Run all tests
+uv run ruff check .                  # Lint
+uv run ruff format .                 # Format
+uv run uvicorn meridian_api.main:app --reload  # Run API locally
+docker compose -f docker/docker-compose.yml up -d  # Start infra
+uv run alembic -c infra/db/migrations/alembic.ini upgrade head  # Run migrations
 ```
 
 ## Architecture Decisions
+- src layout for all packages (prevents import shadowing)
+- Async-first: all I/O is async (asyncpg, httpx)
 - Multi-tenant via PostgreSQL schema separation (one schema per tenant)
-- ClickHouse for high-volume prediction storage (append-only)
+- ClickHouse for high-volume prediction storage (append-only, partitioned by month)
 - SDK sends predictions async via background thread with local buffer
-- All API endpoints versioned under `/api/v1/`
+- All API endpoints versioned under `/v1/`
 - Audit trail: append-only table, immutable logs
 
 ## NFR Targets (MVP)
