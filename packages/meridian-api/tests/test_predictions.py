@@ -10,10 +10,12 @@ from httpx import ASGITransport, AsyncClient
 from meridian_api.main import app
 
 _BATCH_URL = "/api/v1/predictions/batch"
+_PRED_ID_1 = "a0000000-0000-0000-0000-000000000001"
+_PRED_ID_2 = "a0000000-0000-0000-0000-000000000002"
 _SAMPLE_BATCH = {
     "predictions": [
         {
-            "prediction_id": "pred-001",
+            "prediction_id": _PRED_ID_1,
             "model_name": "demo-model",
             "timestamp": 1710000000.0,
             "latency_ms": 1.5,
@@ -21,7 +23,7 @@ _SAMPLE_BATCH = {
             "output": "class_1",
         },
         {
-            "prediction_id": "pred-002",
+            "prediction_id": _PRED_ID_2,
             "model_name": "demo-model",
             "timestamp": 1710000001.0,
             "latency_ms": 2.1,
@@ -58,7 +60,7 @@ async def test_ingest_predictions_success():
     args = mock_insert.call_args
     assert args[0][0] is mock_client
     assert len(args[0][1]) == 2
-    assert args[0][1][0].prediction_id == "pred-001"
+    assert args[0][1][0].prediction_id == _PRED_ID_1
 
 
 @pytest.mark.asyncio
@@ -109,8 +111,20 @@ async def test_ingest_predictions_empty_batch():
 @pytest.mark.asyncio
 async def test_ingest_predictions_integration():
     """End-to-end: POST batch → query ClickHouse → verify row landed."""
+    import uuid
+
     from meridian_api.core.config import settings
     from meridian_api.db.clickhouse import create_ch_client
+
+    # Use unique IDs per run so tests are idempotent.
+    run_id_1 = str(uuid.uuid4())
+    run_id_2 = str(uuid.uuid4())
+    batch = {
+        "predictions": [
+            {**_SAMPLE_BATCH["predictions"][0], "prediction_id": run_id_1},
+            {**_SAMPLE_BATCH["predictions"][1], "prediction_id": run_id_2},
+        ]
+    }
 
     ch_client = create_ch_client(settings)
     app.state.ch_client = ch_client
@@ -119,31 +133,25 @@ async def test_ingest_predictions_integration():
         async with AsyncClient(
             transport=ASGITransport(app=app), base_url="http://test"
         ) as client:
-            response = await client.post(_BATCH_URL, json=_SAMPLE_BATCH)
+            response = await client.post(_BATCH_URL, json=batch)
 
         assert response.status_code == 202
         data = response.json()
         assert data["accepted"] == 2
 
         result = ch_client.query(
-            "SELECT prediction_id, model_name FROM meridian.predictions "
-            "WHERE prediction_id IN {ids:Array(UUID)}",
-            parameters={
-                "ids": [
-                    "00000000-0000-0000-0000-000000000000",  # fallback
-                ]
-            },
-        )
-        # Simpler: just query by model_name used in the test
-        result = ch_client.query(
             "SELECT prediction_id, model_name, latency_ms "
             "FROM meridian.predictions "
-            "WHERE model_name = 'demo-model' "
-            "ORDER BY timestamp DESC LIMIT 2"
+            f"WHERE prediction_id IN ('{run_id_1}', '{run_id_2}')"
         )
         rows = result.result_rows
-        assert len(rows) >= 2
+        assert len(rows) == 2
         model_names = {row[1] for row in rows}
         assert "demo-model" in model_names
     finally:
+        # Clean up test data.
+        ch_client.command(
+            "ALTER TABLE meridian.predictions DELETE "
+            f"WHERE prediction_id IN ('{run_id_1}', '{run_id_2}')"
+        )
         ch_client.close()
